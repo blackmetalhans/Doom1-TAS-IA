@@ -1,0 +1,9 @@
+*.wad
+*.wasm
+*.lmp
+*.so
+*.o
+build/
+dist/
+node_modules/
+.DS_Store
