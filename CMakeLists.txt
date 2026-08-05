@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(ChocolateDoomTAS WASM)
+project(ChocolateDoomTAS C CXX)
 
 # Flags de Emscripten
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s WASM=1 -s USE_SDL=2 -s ALLOW_MEMORY_GROWTH=1")
@@ -43,5 +43,5 @@ set(SOURCES
 
 add_executable(chocolate-doom.js ${SOURCES})
 
-# Configuración final para generar el binario JS/WASM
+# Configuración final para generar el binario JS/
 set_target_properties(chocolate-doom.js PROPERTIES SUFFIX ".js")

@@ -1,0 +1,7 @@
+# Reglas de Optimización de Contexto para DOOM1-TAS-IA
+
+- **Aisle las capas del proyecto:** Si el prompt refiere al hipervisor o cliente (`tas_host.mjs`, `js-client/`), NO uses `read_file` en el código fuente de C (`src/`) ni en `CMakeLists.txt` a menos que se solicite explícitamente revisar un hook FFI u offset de memoria.
+- **Prohibición de inspección de binarios:** Jamás intentes leer archivos generados dentro de `build/` ni binarios `.wasm`.
+- **Prohibición de búsquedas masivas:** Tienes prohibido ejecutar comandos como `grep`, `find` o `list_dir` de forma recursiva en el workspace. Limítate exclusivamente a las rutas señaladas en el prompt.
+- **Lectura puntual:** No leas `doom_tas_context.md` ni `ARCHITECTURE.MD` a menos que la tarea requiera actualizar la arquitectura global del bot.
+- **Ediciones quirúrgicas:** Aplica parches únicamente sobre las funciones o bloques afectados. No reescribas archivos completos.
