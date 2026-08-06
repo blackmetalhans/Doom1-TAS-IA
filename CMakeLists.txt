@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(ChocolateDoomTAS C CXX)
 
 # Flags de Emscripten
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s WASM=1 -s USE_SDL=2 -s ALLOW_MEMORY_GROWTH=1")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s WASM=1 -s USE_SDL=2 -s USE_SDL_NET=2 -s USE_SDL_MIXER=2 -s ALLOW_MEMORY_GROWTH=1")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s EXPORTED_FUNCTIONS=['_main','_GetPlayerMobjPointer','_SetPlayerInputs','_GetLevelTime'] -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -flto")
 
@@ -45,3 +45,9 @@ add_executable(chocolate-doom.js ${SOURCES})
 
 # Configuración final para generar el binario JS/
 set_target_properties(chocolate-doom.js PROPERTIES SUFFIX ".js")
+file(GLOB TEXTSCREEN_SRC "src/chocolate-doom/textscreen/*.c")
+target_sources(chocolate-doom.js PRIVATE ${TEXTSCREEN_SRC})
+file(GLOB OPL_SRC "src/chocolate-doom/opl/*.c")
+target_sources(chocolate-doom.js PRIVATE ${OPL_SRC})
+file(GLOB PCSOUND_SRC "src/chocolate-doom/pcsound/*.c")
+target_sources(chocolate-doom.js PRIVATE ${PCSOUND_SRC})
