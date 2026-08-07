@@ -3,7 +3,7 @@ project(ChocolateDoomTAS C CXX)
 
 # Flags de Emscripten
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s WASM=1 -s USE_SDL=2 -s USE_SDL_NET=2 -s USE_SDL_MIXER=2 -s ALLOW_MEMORY_GROWTH=1")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s EXPORTED_FUNCTIONS=['_main','_GetPlayerMobjPointer','_SetPlayerInputs','_GetLevelTime'] -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s EXPORTED_FUNCTIONS=['_main','__get_ticcmd_pointer','__run_single_tic'] -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -flto")
 
 # Desactivar red y sonido para modo headless/TAS puro si es necesario, 
