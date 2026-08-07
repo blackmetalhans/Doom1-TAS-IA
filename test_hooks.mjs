@@ -1,28 +1,33 @@
+import fs from 'fs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-console.log("[*] Booteando módulo WebAssembly (CommonJS/Global Intercept)...");
+const jsPath = './build/chocolate-doom.js.js';
+let code = fs.readFileSync(jsPath, 'utf8');
 
-// Inyectamos la topología directamente al scope global antes de que el engine despierte
-global.Module = {
+if (!code.includes('TAS_INJECT_OK')) {
+    console.log("[*] Parchando binario de Emscripten en disco (Zero-Overhead)...");
+    const patch = `
+/* TAS_INJECT_OK */
+var Module = {
     noInitialRun: true,
-    onRuntimeInitialized: () => {
-        const mod = global.Module;
-        
-        if (typeof mod._get_ticcmd_pointer !== 'function') {
-            console.error("[-] FATAL: _get_ticcmd_pointer no expuesto.");
+    onRuntimeInitialized: function() {
+        const get_ptr = Module.__get_ticcmd_pointer || Module._get_ticcmd_pointer;
+        if (typeof get_ptr !== 'function') {
+            console.error("[-] FATAL: Hook _get_ticcmd_pointer no encontrado en exports.");
             process.exit(1);
         }
-
-        const ticcmd_ptr = mod._get_ticcmd_pointer();
-        console.log(`[+] Linker OK. ticcmd_t alojado en offset físico: 0x${ticcmd_ptr.toString(16)}`);
-        
-        // Verificación de V8 Memory Detachment
-        const heapSize = mod.wasmMemory.buffer.byteLength / (1024 * 1024);
-        console.log(`[+] WASM Heap: ${heapSize} MB inicializados en memoria lineal.`);
+        const ptr = get_ptr();
+        console.log("\\n[+] LINKER FFI OK!");
+        console.log("[+] OFFSET FÍSICO (ticcmd_t): 0x" + ptr.toString(16));
         process.exit(0);
     }
 };
+`;
+    fs.writeFileSync(jsPath, patch + code);
+} else {
+    console.log("[*] Binario JS ya estaba parchado.");
+}
 
-// Disparamos el cold-boot del motor de forma síncrona
+console.log("[*] Cargando motor C/WASM en estado de hibernación...");
 require('./build/chocolate-doom.js.js');

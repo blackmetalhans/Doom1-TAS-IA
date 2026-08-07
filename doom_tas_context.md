@@ -9,21 +9,23 @@ This project aims to build a neuro-evolutionary Tool-Assisted Speedrun (TAS) bot
 - **Hypervisor:** Node.js (ES Modules)
 - **AI/Evolution:** NEAT (NeuroEvolution of Augmenting Topologies) - Pending implementation.
 
-## CURRENT PROGRESS (As of Aug 4, 2026)
-1.  **Environment Setup:** `doom1.wad` acquired and ready for VFS bundling.
-2.  **Compilation Topology:** `build.sh` drafted. It utilizes `emcc` with flags for LTO (`-flto`), memory export (`ALLOW_MEMORY_GROWTH`), and specific function exports (`_main`, `_doomgeneric_tick`, etc.).
-3.  **Hypervisor Structure:** `tas_host.mjs` drafted. It successfully instantiates the WASM module, maps the memory buffer via `DataView`, and establishes a discrete tick loop (`env.step()`) decoupled from real-time execution.
-4.  **Memory Mapping:** Fixed offsets for the `mobj_t` struct have been identified for wasm32 (ILP32): MOBJ_X = 24, MOBJ_Y = 28, MOBJ_Z = 32, MOBJ_ANGLE = 48 (uint32_t), MOBJ_HEALTH = 112 (int32_t), assuming fixed-point (16.16) arithmetic.
+## CURRENT PROJECT STATE
+**FASE 8: NEAT Integration & VFS Mounting.**
+
+## CURRENT PROGRESS (As of Aug 7, 2026)
+1. **Environment Setup:** doom1.wad acquired and ready for VFS bundling.
+2. **Compilation Topology:** CMakeLists.txt / Ninja build pipeline configured targeting WASM. Utilizes `emcc` with flags for LTO (-flto), memory growth, and specific function exports.
+3. **Hypervisor Structure:** tas_host.mjs updated. Instantiation hook "CommonJS Global Intercept" successfully implemented; utilizes `DataView` for decoupled tick loops.
+4. **Memory Mapping & Pointer Extraction:**
+   - Direct pointer binding via _get_ticcmd_pointer() to players[consoleplayer].cmd.
+   - **BSS Pointer Extraction [COMPLETED]:** ticcmd_t physical offset successfully extracted at 0x13bd28 via AST physical binary patching, bypassing Emscripten hoisting.
+   - **Fixed Offsets (wasm32 ILP32):** MOBJ_X: 24, MOBJ_Y: 28, MOBJ_Z: 32, MOBJ_ANGLE: 48 (uint32_t), MOBJ_HEALTH: 112 (int32_t).
 
 ## IMMEDIATE NEXT STEPS (ACTION ITEMS)
-1.  **C-Level FFI Hooks:** We need to inject `EMSCRIPTEN_KEEPALIVE` functions into the C source (e.g., in `doomgeneric.c` or a new `tas_hooks.c`). Specifically:
-    *   `GetPlayerMobjPointer()`: To return the memory address of the local player's `mobj_t`.
-    *   `SetPlayerInputs(forward, side, angle, buttons)`: To intercept and override the `ticcmd_t` before the physical frame processing.
-    *   `GetLevelTime()`: To track simulation progression.
-2.  **Compilation & Linking:** Execute `build.sh` and resolve any missing symbols or VFS packaging issues.
-3.  **Telemetry Verification:** Run `node tas_host.mjs` and confirm the `DataView` extracts valid coordinates, not null pointers.
-4.  **NEAT Integration:** Begin drafting the neural network interface to map genomic outputs to the `SetPlayerInputs` hook, using Health and Distance as the fitness function.
+1. **C-Level FFI Hooks [COMPLETED]:** Injected EMSCRIPTEN_KEEPALIVE functions in src/tas_hooks.c. _get_ticcmd_pointer() exposes direct memory address of players[consoleplayer].cmd for zero-overhead V8 mutation. _run_single_tic() calls G_Ticker().
+2. **BSS Pointer Extraction [COMPLETED]:** ticcmd_t physical offset successfully extracted at 0x13bd28.
+3. **IWAD Sandbox Mounting (VFS):** Configure NODEFS inside Module.preRun in tas_host.mjs to mount local assets directory containing doom1.wad.
+4. **NEAT Integration:** Begin drafting neural network interface to map genomic outputs to _get_ticcmd_pointer(), using Health and Distance as fitness function.
 
 ## WORKFLOW INTEGRATION
-This context file synchronizes the multi-model pipeline. Gemini Spark (Execution) must use this state to inform local I/O operations, while Gemini Pro (Architecture) and AI Studio (Brute Force) use it as the foundation for complex logic generation.
-
+This context file synchronizes the multi-model pipeline. Gemini Spark (Execution) uses this state to inform local I/O operations, while Gemini Pro (Architecture) and AI Studio (Brute Force) use it as foundation for complex logic generation.
