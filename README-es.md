@@ -13,6 +13,7 @@ Plataforma neuro-evolutiva de **Tool-Assisted Speedrun (TAS)** e **Inteligencia 
 - [Estructura del Repositorio](#-estructura-del-repositorio)
 - [Instalación y Compilación](#-instalación-y-compilación)
 - [Uso del Hipervisor y FFI](#-uso-del-hipervisor-y-ffi)
+- [Roadmap del Proyecto](#-roadmap-del-proyecto)
 - [Pipeline de Ingeniería IA Multi-Modelo](#-pipeline-de-ingeniería-ia-multi-modelo)
 - [Convención de Commits y Reglas](#-convención-de-commits-y-reglas)
 - [Licencia](#-licencia)
@@ -145,6 +146,16 @@ host.runSingleTic();
 // Inspeccionar telemetría directamente desde la memoria lineal WASM
 const playerX = host.dataView.getInt32(0x13bd28 + 24, true);
 ```
+
+---
+
+## 🗺️ Roadmap del Proyecto
+
+- **Fase 8: Integración NEAT y Montaje VFS**
+  - Montaje de IWAD en VFS de Emscripten y mapeo de memoria FFI para `ticcmd`.
+  - Evaluación de fitness de redes neuronales basada en telemetría de salud y distancia.
+- **Fase 9: Cliente Visual & Canvas Bridge (Modern Alternative to DSDA-Runner)**
+  - Extracción de framebuffer crudo (`screens[0]`) mediante `DataView` y renderizado dinámico en Canvas HTML5 / Electron para creación de TAS sin depender de herramientas legacy en C.
 
 ---
 

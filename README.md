@@ -13,6 +13,7 @@ High-performance, neuro-evolutionary **Tool-Assisted Speedrun (TAS)** and **Arti
 - [Project Structure](#-project-structure)
 - [Setup & Build Instructions](#-setup--build-instructions)
 - [Hypervisor & FFI Usage](#-hypervisor--ffi-usage)
+- [Project Roadmap](#-project-roadmap)
 - [Multi-Model AI Engineering Pipeline](#-multi-model-ai-engineering-pipeline)
 - [Commit Convention & Guidelines](#-commit-convention--guidelines)
 - [License](#-license)
@@ -145,6 +146,16 @@ host.runSingleTic();
 // Inspect telemetry directly from WASM memory
 const playerX = host.dataView.getInt32(0x13bd28 + 24, true);
 ```
+
+---
+
+## 🗺️ Project Roadmap
+
+- **Phase 8: NEAT Integration & VFS Mounting**
+  - IWAD mounting in Emscripten VFS and tick-cmd FFI memory mapping.
+  - Neural network fitness evaluations based on health and distance telemetry.
+- **Phase 9: Visual Client & Canvas Bridge (Modern Alternative to DSDA-Runner)**
+  - Raw framebuffer extraction (`screens[0]`) via `DataView` and dynamic rendering on HTML5 Canvas / Electron for TAS creation without depending on legacy C tools.
 
 ---
 
