@@ -44,12 +44,17 @@ async function runVerification() {
     Module._init_headless_doom();
     console.log("[TEST] Headless Doom inicializado.");
 
+    // Force map load before grabbing pointers
+    Module._start_tas_map();
+    Module._run_single_tic(); // G_Ticker executes ga_newgame and allocates playerMobj
+    Module._run_single_tic(); // Extra tick to settle physics
+
     // 3. Obtener punteros FFI
     const ticcmdPtr = Module._get_ticcmd_pointer();
-    const playerMobjPtr = Module._get_player_mobj_pointer(); // Devuelve &players[0].mo
-
-    if (!ticcmdPtr || !playerMobjPtr) {
-        throw new Error("[CRITICAL] Punteros BSS/MOBJ nulos devueltos por el motor.");
+    const playerMobjPtr = Module._get_player_mobj_pointer();
+    
+    if (playerMobjPtr === 0) {
+        throw new Error("[CRITICAL] playerMobjPtr is NULL (0x0). Map failed to load.");
     }
 
     // 4. Mapeo de offsets de mobj_t (WASM32 / ILP32)

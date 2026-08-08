@@ -36,9 +36,8 @@ set_target_properties(chocolate-doom PROPERTIES
         -s INITIAL_MEMORY=67108864 \
         -s NO_EXIT_RUNTIME=1 \
         -s FORCE_FILESYSTEM=1 \
-        -s EXPORTED_FUNCTIONS=_get_ticcmd_pointer,_run_single_tic,_init_headless_doom,_get_player_mobj_pointer \
+        -s EXPORTED_FUNCTIONS=_get_ticcmd_pointer,_run_single_tic,_init_headless_doom,_get_player_mobj_pointer,_start_tas_map \
         -s EXPORTED_RUNTIME_METHODS=FS,HEAPU8,HEAP32,ccall,cwrap,wasmMemory \
-        -s EMIT_SYMBOL_MAP=1 \
         --emit-symbol-map \
         -g2"
 )
