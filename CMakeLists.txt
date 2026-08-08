@@ -53,4 +53,4 @@ file(GLOB PCSOUND_SRC "src/chocolate-doom/pcsound/*.c")
 target_sources(chocolate-doom.js PRIVATE ${PCSOUND_SRC})
 
 # Inyección directa de banderas de Linkeo para el Hipervisor WASM
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -flto -s NO_EXIT_RUNTIME=1 -s EXPORTED_FUNCTIONS=\"['_main', '_init_headless_doom', '__get_ticcmd_pointer', '__run_single_tic']\" -s ALLOW_MEMORY_GROWTH=1")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -O3 -flto -s NO_EXIT_RUNTIME=1 -s INVOKE_RUN=0 -s FORCE_FILESYSTEM=1 -s EXPORTED_FUNCTIONS=\"['_main', '_init_headless_doom', '__get_ticcmd_pointer', '__run_single_tic']\" -s EXPORTED_RUNTIME_METHODS=\"['FS', 'ccall', 'cwrap']\" -s ALLOW_MEMORY_GROWTH=1")

@@ -10,31 +10,47 @@ class TASHost {
     }
 
     get dataView() {
-        if (!this.wasmMemory || !this.wasmMemory.buffer) throw new Error("ERR_WASM: Heap detach.");
-        return new DataView(this.wasmMemory.buffer);
+        if (!this.module || !this.module.HEAPU8 || !this.module.HEAPU8.buffer) {
+            throw new Error("ERR_WASM: Heap no disponible o desprendido.");
+        }
+        return new DataView(this.module.HEAPU8.buffer);
     }
 
     async boot() {
-        return new Promise((resolve, reject) => {
-            try {
-                // Binario parchado físicamente en disco (noInitialRun activado)
-                const mod = require('./build/chocolate-doom.js.js');
-                this.module = mod;
-                this.wasmMemory = mod.wasmMemory;
-                
-                console.log("[*] VFS: Inyectando doom1.wad a la memoria lineal...");
-                const wadData = fs.readFileSync('./assets/doom1.wad');
-                mod.FS.writeFile('/doom1.wad', wadData);
-                console.log("[+] VFS: IWAD montado exitosamente.");
-                
-                if (typeof mod._get_ticcmd_pointer === 'function') {
-                    this.ticcmdPtr = mod._get_ticcmd_pointer();
-                }
-                resolve();
-            } catch (err) {
-                reject(err);
-            }
-        });
+        const mod = require('./build/chocolate-doom.js.js');
+
+        // Esperar la instanciación asíncrona de WASM antes de tocar el VFS
+        if (!mod.calledRun && !mod.runtimeInitialized) {
+            await new Promise(resolve => { mod.onRuntimeInitialized = resolve; });
+        }
+
+        this.module = mod;
+        this.wasmMemory = mod.HEAPU8;
+
+        console.log("[*] VFS: Inyectando doom1.wad a la memoria lineal...");
+        const wadData = fs.readFileSync('./assets/doom1.wad');
+        
+        // Convertir Buffer de Node a Uint8Array explícito para el FS de Emscripten
+        mod.FS.writeFile('/doom1.wad', new Uint8Array(wadData));
+        console.log("[+] VFS: IWAD montado exitosamente.");
+
+        if (typeof mod._init_headless_doom === 'function') {
+            console.log("[*] Engine C: Invocando _init_headless_doom()...");
+            mod._init_headless_doom();
+            console.log("[+] Engine C: Inicializado en modo Headless (TIC 0).");
+        } else if (typeof mod.init_headless_doom === 'function') {
+            console.log("[*] Engine C: Invocando init_headless_doom()...");
+            mod.init_headless_doom();
+            console.log("[+] Engine C: Inicializado en modo Headless (TIC 0).");
+        } else {
+            console.warn("[!] ADVERTENCIA: Hook _init_headless_doom no detectado en WASM.");
+        }
+
+        if (typeof mod.__get_ticcmd_pointer === 'function') {
+            this.ticcmdPtr = mod.__get_ticcmd_pointer();
+        } else if (typeof mod._get_ticcmd_pointer === 'function') {
+            this.ticcmdPtr = mod._get_ticcmd_pointer();
+        }
     }
     
     injectTicCmd(inputData) {
@@ -52,3 +68,11 @@ class TASHost {
     }
 }
 export default TASHost;
+
+const host = new TASHost();
+host.boot().then(() => {
+    const probeByte = host.dataView.getInt8(0x13bd28);
+    console.log(`[FFI PROBE SUCCESS] Byte en 0x13bd28: ${probeByte}`);
+}).catch(err => {
+    console.error("[!] Error en el Hipervisor:", err);
+});
