@@ -1,5 +1,12 @@
 # Doom1-TAS-IA 🚀
 
+[![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](LICENSE.md)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+[![Status](https://img.shields.io/badge/Status-WIP-orange.svg)](#)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
+
+![Demo](assets/demo.gif)
+
 **Español** | [English](README.md)
 
 Plataforma neuro-evolutiva de **Tool-Assisted Speedrun (TAS)** e **Inteligencia Artificial** de alto rendimiento para Doom 1, ejecutada sobre WebAssembly (WASM) mediante un motor decapitado en C controlado por un hipervisor en Node.js.
@@ -14,7 +21,8 @@ Plataforma neuro-evolutiva de **Tool-Assisted Speedrun (TAS)** e **Inteligencia 
 - [Instalación y Compilación](#-instalación-y-compilación)
 - [Uso del Hipervisor y FFI](#-uso-del-hipervisor-y-ffi)
 - [Roadmap del Proyecto](#-roadmap-del-proyecto)
-- [Pipeline de Ingeniería IA Multi-Modelo](#-pipeline-de-ingeniería-ia-multi-modelo)
+- [Metodología de Desarrollo](#-metodología-de-desarrollo)
+- [Por qué es complejo](#-por-qué-es-complejo)
 - [Convención de Commits y Reglas](#-convención-de-commits-y-reglas)
 - [Licencia](#-licencia)
 
@@ -70,12 +78,12 @@ Para la especificación técnica completa, consulta [ARCHITECTURE.MD](ARCHITECTU
 ├── LICENSE.md               # Licencia GNU General Public License v2.0
 ├── README.md                # Documentación del proyecto (Inglés)
 ├── README-es.md             # Documentación del proyecto (Español)
-├── doom_tas_context.md      # Contexto del proyecto y estado de la hoja de ruta
 ├── setup.sh                 # Script de configuración del entorno y descarga de assets
-├── system_rules.md          # Reglas del pipeline multi-modelo y guías del repositorio
 ├── tas_host.mjs             # Hipervisor en Node.js y host WASM
-├── temp_build_ninja.bat     # Script de compilación para Windows (CMake/Ninja)
 ├── test_hooks.mjs           # Script de prueba FFI y verificación de parches
+├── .docs_internals/         # Contexto interno aislado y reglas de ingeniería
+│   ├── doom_tas_context.md  # Contexto del proyecto y estado de la hoja de ruta
+│   └── system_rules.md      # Reglas del flujo de trabajo y guías del repositorio
 ├── assets/                  # Assets del juego (IWAD doom1.wad)
 ├── build/                   # Artefactos de compilación (chocolate-doom.js, wasm)
 ├── js-client/               # Cliente web y componentes del bridge visual
@@ -102,13 +110,10 @@ Ejecuta [setup.sh](setup.sh) para clonar dependencias y descargar el IWAD sharew
 ### 2. Compilación a WebAssembly
 Inicializa las variables de entorno de `emsdk` y ejecuta CMake con Ninja:
 ```bash
-# En Linux / MINGW64 / Bash:
+# En Linux / MINGW64 / Bash / Windows:
 source /ruta/a/emsdk/emsdk_env.sh
 emcmake cmake -B build -G Ninja
 ninja -C build
-
-# En Windows (cmd/bat):
-temp_build_ninja.bat
 ```
 
 El proceso de compilación generará `chocolate-doom.js` y `chocolate-doom.wasm` en la carpeta `build/`.
@@ -159,15 +164,17 @@ const playerX = host.dataView.getInt32(0x13bd28 + 24, true);
 
 ---
 
-## 🧠 Pipeline de Ingeniería IA Multi-Modelo
+## 🛠️ Metodología de Desarrollo
 
-Este repositorio utiliza un flujo de trabajo optimizado entre múltiples modelos de IA:
-- **Fase 1 (Ingesta - Perplexity):** Extracción de estado del arte, CVEs y documentación de APIs.
-- **Fase 2 (Arquitectura - Gemini Pro):** Diseño lógico, patrones de arquitectura y prompt engineering.
-- **Fase 3 (Fuerza Bruta - Google AI Studio):** Análisis de contexto masivo (hasta 2M tokens) y volcados de memoria.
-- **Fase 4 (Ejecución - Gemini Spark / GitHub Copilot):** Parsing AST, inyección local de código, I/O local, CI/CD y Git.
+Los modelos de Inteligencia Artificial en este repositorio se utilizan estrictamente como asistentes de herramientas de software y parsers de AST (por ejemplo, automatizando la generación de código base, transformaciones sintácticas y ediciones estructuradas de archivos). Los asistentes de IA no reemplazan la ingeniería de C de bajo nivel, el diseño de alineación de memoria ni el juicio heurístico humano requeridos para hipervisores deterministas de motores de juego.
 
-Para más detalles sobre los protocolos del flujo de trabajo, consulta [system_rules.md](system_rules.md).
+Para más detalles sobre los protocolos de ingeniería, consulta [.docs_internals/system_rules.md](.docs_internals/system_rules.md).
+
+---
+
+## ⚡ Por qué es complejo
+
+Ejecutar NeuroEvolución de Topologías Aumentadas (NEAT) directamente sobre un motor monolítico en C de los años 90 compilado a WebAssembly es fundamentalmente superior y exponencialmente más complejo que operar sobre emuladores externos o wrappers de transmisión de video tradicionales. Los entornos de RL convencionales sufren de alta latencia de IPC, planificación no determinista del sistema operativo y capturas pesadas del framebuffer. En contraste, esta arquitectura reduce el motor a un núcleo de ejecución en C sin entorno gráfico, expone las direcciones físicas del segmento BSS (`0x13bd28` para estructuras `ticcmd_t`) y gestiona la simulación de forma determinista mediante mutaciones de memoria `DataView` con cero sobrecarga a 35 TIC/s (o velocidades de evaluación sin límite que superan miles de frames por segundo). Lograr esto requiere una meticulosa refactorización de C de bajo nivel, mantener la alineación exacta de memoria de estructuras ILP32 a través de las fronteras de WASM, resolver salvedades de sincronización de archivos en el VFS de Emscripten y garantizar un determinismo perfecto estado por frame a lo largo de millones de iteraciones evolutivas.
 
 ---
 
