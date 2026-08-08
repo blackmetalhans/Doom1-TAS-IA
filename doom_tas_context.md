@@ -26,6 +26,7 @@ This project aims to build a neuro-evolutionary Tool-Assisted Speedrun (TAS) bot
 2. **BSS Pointer Extraction [COMPLETED]:** ticcmd_t physical offset successfully extracted at 0x13bd28.
 3. **IWAD Sandbox Mounting (VFS):** Configure NODEFS inside Module.preRun in tas_host.mjs to mount local assets directory containing doom1.wad.
 4. **NEAT Integration:** Begin drafting neural network interface to map genomic outputs to _get_ticcmd_pointer(), using Health and Distance as fitness function.
+- [ ] Phase 9: Visual Client UI Development (Framebuffer extraction via DataView and HTML5 Canvas mapping).
 
 ## WORKFLOW INTEGRATION
 This context file synchronizes the multi-model pipeline. Gemini Spark (Execution) uses this state to inform local I/O operations, while Gemini Pro (Architecture) and AI Studio (Brute Force) use it as foundation for complex logic generation.

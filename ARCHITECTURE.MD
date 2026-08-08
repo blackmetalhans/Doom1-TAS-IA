@@ -62,3 +62,7 @@ The project uses a custom toolchain based on Emscripten and CMake:
 2.  **Config:** `emcmake cmake -G Ninja ..`
 3.  **Compilation:** `ninja` produces `chocolate-doom.js` and `chocolate-doom.wasm`.
 
+## FUTURE PHASE: VISUAL CLIENT & CANVAS BRIDGE (GUI)
+Since the engine is headless in WASM and exposed via FFI, a modern frontend (Web/Electron) will be developed. This client will read the internal framebuffer pointer (`screens[0]`), apply RGBA palette mapping (PLAYPAL), and render to an HTML5 `<canvas>`. User GUI inputs will directly mutate `ticcmd_t` structures in BSS memory to create TAS manually without relying on legacy C runners.
+
+
