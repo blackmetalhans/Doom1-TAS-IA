@@ -1,0 +1,44 @@
+add_definitions(-D_DOOM_ -DCHOCOLATE_DOOM)
+
+file(GLOB DOOM_SOURCES 
+    "chocolate-doom/src/*.c"
+    "chocolate-doom/src/doom/*.c"
+    "chocolate-doom/textscreen/*.c"
+    "chocolate-doom/pcsound/*.c"
+    "chocolate-doom/opl/*.c"
+    "tas_hooks.c"
+)
+
+list(FILTER DOOM_SOURCES EXCLUDE REGEX "i_main\\.c$")
+list(FILTER DOOM_SOURCES EXCLUDE REGEX "chocolate-doom/src/heretic/.*")
+list(FILTER DOOM_SOURCES EXCLUDE REGEX "chocolate-doom/src/hexen/.*")
+list(FILTER DOOM_SOURCES EXCLUDE REGEX "chocolate-doom/src/strife/.*")
+list(FILTER DOOM_SOURCES EXCLUDE REGEX "chocolate-doom/src/setup/.*")
+list(FILTER DOOM_SOURCES EXCLUDE REGEX ".*_win32\\.c$")
+list(FILTER DOOM_SOURCES EXCLUDE REGEX ".*_posix\\.c$")
+
+add_executable(chocolate-doom ${DOOM_SOURCES})
+
+target_include_directories(chocolate-doom PRIVATE
+    chocolate-doom/src
+    chocolate-doom/src/doom
+    chocolate-doom/textscreen
+    chocolate-doom/pcsound
+    chocolate-doom/opl
+)
+
+set_target_properties(chocolate-doom PROPERTIES
+    OUTPUT_NAME "chocolate-doom"
+    SUFFIX ".js"
+    LINK_FLAGS "\
+        -s WASM=1 \
+        -s ALLOW_MEMORY_GROWTH=0 \
+        -s INITIAL_MEMORY=67108864 \
+        -s NO_EXIT_RUNTIME=1 \
+        -s FORCE_FILESYSTEM=1 \
+        -s EXPORTED_FUNCTIONS=_get_ticcmd_pointer,_run_single_tic,_init_headless_doom,_get_player_mobj_pointer \
+        -s EXPORTED_RUNTIME_METHODS=FS,HEAPU8,HEAP32,ccall,cwrap,wasmMemory \
+        -s EMIT_SYMBOL_MAP=1 \
+        --emit-symbol-map \
+        -g2"
+)

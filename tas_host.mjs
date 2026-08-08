@@ -17,7 +17,7 @@ class TASHost {
     }
 
     async boot() {
-        const mod = require('./build/chocolate-doom.js.js');
+        const mod = require('./build/src/chocolate-doom.js');
 
         // Esperar la instanciación asíncrona de WASM antes de tocar el VFS
         if (!mod.calledRun && !mod.runtimeInitialized) {
