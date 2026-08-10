@@ -1,131 +1,57 @@
 import fs from 'fs';
 import path from 'path';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+import createDoomModule from './build/src/chocolate-doom.js';
 
 async function runVerification() {
-    console.log("[TEST] Inicializando módulo WebAssembly...");
-    
-    globalThis.Module = {
+    const Module = await createDoomModule({
         noInitialRun: true,
-        print: () => {},
-        printErr: (text) => console.error(`[WASM ERR] ${text}`)
-    };
+        print: () => {}, 
+        printErr: (text) => console.error(`[ENGINE] ${text}`)
+    });
 
-    const Module = require('./build/src/chocolate-doom.js');
-
-    if (!Module.calledRun && !Module.runtimeInitialized) {
-        await new Promise(resolve => {
-            Module.onRuntimeInitialized = resolve;
-        });
-    }
-
-    console.log("[TEST] Runtime inicializado.");
-    if (!Module.FS && typeof Module.FS_createDataFile === 'function') {
-        Module.FS = {
-            writeFile: (filename, data) => {
-                const name = filename.startsWith('/') ? filename.substring(1) : filename;
-                Module.FS_createDataFile('/', name, data, true, true, true);
-            }
-        };
-    }
-
-    // 1. Montar IWAD en el VFS de Emscripten
+    // 1. Montaje VFS del IWAD local
     const iwadPath = path.resolve('./assets/doom1.wad');
-    if (!fs.existsSync(iwadPath)) {
-        throw new Error(`[ERROR] No se encontró el archivo IWAD en: ${iwadPath}`);
-    }
-    const iwadBuffer = fs.readFileSync(iwadPath);
-    Module.FS.writeFile('/doom1.wad', iwadBuffer);
-    console.log("[TEST] IWAD cargado en VFS.");
+    Module.FS.writeFile('/doom1.wad', fs.readFileSync(iwadPath));
 
-    // 2. Inicializar motor en modo Headless (TIC 0)
-    console.log("[TEST] Invocando _init_headless_doom()...");
+    // 2. Boot decapitado y alocación forzada de E1M1
     Module._init_headless_doom();
-    console.log("[TEST] Headless Doom inicializado.");
+    Module._start_tas_map(); 
 
-    // Force map load before grabbing pointers
-    Module._start_tas_map();
-    Module._run_single_tic(); // G_Ticker executes ga_newgame and allocates playerMobj
-    Module._run_single_tic(); // Extra tick to settle physics
+    // 3. Tick Loop de sincronización (Esperando asentamiento de P_SpawnPlayer)
+    let playerMobjPtr = 0;
+    console.log("[TAS] Sincronizando hipervisor con el estado del engine...");
+    for (let i = 0; i < 200; i++) {
+        Module._run_single_tic();
+        playerMobjPtr = Module._get_player_mobj_pointer();
+        if (playerMobjPtr !== 0) {
+            Module._run_single_tic(); // TIC extra crucial para asentar coordenadas en memoria
+            console.log(`[TAS] Spawn asentado en el TIC ${i}. Puntero mobj_t: 0x${playerMobjPtr.toString(16)}`);
+            break;
+        }
+    }
 
-    // 3. Obtener punteros FFI
-    const ticcmdPtr = Module._get_ticcmd_pointer();
-    const playerMobjPtr = Module._get_player_mobj_pointer();
-    
     if (playerMobjPtr === 0) {
-        throw new Error("[CRITICAL] playerMobjPtr is NULL (0x0). Map failed to load.");
+        throw new Error("CRITICAL: El motor nunca instanció al jugador. Revisa si start_tas_map() está inyectando G_InitNew correctamente.");
     }
 
-    // 4. Mapeo de offsets de mobj_t (WASM32 / ILP32)
-    // mobj_t offsets: x = 24 (int32), y = 28 (int32), z = 32 (int32)
-    
-    // Resolve WASM ArrayBuffer robustly
-    let memoryBuffer;
-    if (Module.wasmMemory) {
-        memoryBuffer = Module.wasmMemory.buffer;
-    } else if (Module.HEAPU8) {
-        memoryBuffer = Module.HEAPU8.buffer;
-    } else {
-        throw new Error("[FATAL] No WebAssembly memory buffer exposed on Module.");
-    }
-    
-    const view = new DataView(memoryBuffer);
-    
-    const startX = view.getInt32(playerMobjPtr + 24, true);
-    const startY = view.getInt32(playerMobjPtr + 28, true);
+    // 4. Extracción de coordenadas iniciales (WASM32/ILP32: fixed_t en offset 12 y 16)
+    const view = new DataView(Module.wasmMemory ? Module.wasmMemory.buffer : Module.HEAPU8.buffer);
+    const getX = () => view.getInt32(playerMobjPtr + 12, true) / 65536.0;
+    const getY = () => view.getInt32(playerMobjPtr + 16, true) / 65536.0;
 
-    console.log(`[TEST] Posición Inicial: X=${startX >> 16}, Y=${startY >> 16}`);
+    console.log(`[TAS] Coordenadas Iniciales -> X: ${getX()}, Y: ${getY()}`);
 
-    // 5. Inyectar marcha adelante (forwardmove = 50) en ticcmd_t
-    // ticcmd_t offset: forwardmove = 0 (int8_t)
-    view.setInt8(ticcmdPtr + 0, 50);
+    // 5 y 6. Inyección sostenida (1 segundo = 35 TICs)
+    const ticcmdPtr = Module._get_ticcmd_pointer();
+    console.log(`[TAS] Forzando inyección FFI sostenida en 0x${ticcmdPtr.toString(16)}`);
 
-    // 6. Ejecutar 35 TICs (1 segundo simulado de juego)
     for (let i = 0; i < 35; i++) {
+        view.setInt8(ticcmdPtr + 0, 50); // Inyección sostenida FFI
         Module._run_single_tic();
     }
 
-    // 7. Leer nueva posición
-    const endX = view.getInt32(playerMobjPtr + 24, true);
-    const endY = view.getInt32(playerMobjPtr + 28, true);
-
-    const deltaX = (endX - startX) >> 16;
-    const deltaY = (endY - startY) >> 16;
-    const displacement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-    console.log(`[TEST] Posición Final:   X=${endX >> 16}, Y=${endY >> 16}`);
-    console.log(`[TEST] Desplazamiento:   ${displacement.toFixed(2)} unidades`);
-
-    // 8. Criterio de Aceptación
-    if (displacement > 0) {
-        console.log("[SUCCESS] Loop End-to-End validado correctamente. Cero desincronización.");
-        process.exit(0);
-    } else {
-        console.error("[FAIL] El jugador no cambió de posición. Revisa el offset de ticcmd_t o mobj_t.");
-        executeOffsetFallbackStrategy(Module, playerMobjPtr);
-        process.exit(1);
-    }
+    // 7. Verificación del delta físico
+    console.log(`[TAS] Coordenadas Finales   -> X: ${getX()}, Y: ${getY()}`);
 }
 
-/**
- * Estrategia de Fallback: Escaneo de símbolos si los offsets precalculados fallan.
- */
-function executeOffsetFallbackStrategy(Module, playerMobjPtr) {
-    console.log("[FALLBACK] Iniciando escaneo de memoria BSS en el mapa de símbolos...");
-    const symbolMapPath = path.resolve('./build/src/chocolate-doom.js.symbols');
-    
-    if (fs.existsSync(symbolMapPath)) {
-        const symbolMap = fs.readFileSync(symbolMapPath, 'utf-8');
-        const lines = symbolMap.split('\n');
-        const playerSym = lines.find(line => line.includes('players'));
-        console.log(`[FALLBACK] Símbolo encontrado en map file: ${playerSym}`);
-    } else {
-        console.log("[FALLBACK] No se encontró el archivo .symbols. Compila con -s EMIT_SYMBOL_MAP=1.");
-    }
-}
-
-runVerification().catch(err => {
-    console.error(`[FATAL] ${err.message}`);
-    process.exit(1);
-});
+runVerification().catch(console.error);

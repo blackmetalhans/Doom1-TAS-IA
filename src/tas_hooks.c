@@ -2,8 +2,8 @@
 #include "doomstat.h"
 #include "d_player.h"
 #include "d_main.h"
+#include "g_game.h"
 
-// Firma externa del loop lógico para aislar el tick del renderizado
 extern void G_Ticker(void);
 
 EMSCRIPTEN_KEEPALIVE
@@ -18,13 +18,11 @@ void run_single_tic(void) {
 
 EMSCRIPTEN_KEEPALIVE
 void* get_player_mobj_pointer(void) {
+    if (!playeringame[consoleplayer]) return NULL;
     return (void*)players[consoleplayer].mo;
 }
 
 EMSCRIPTEN_KEEPALIVE
 void start_tas_map(void) {
-    gameaction = ga_newgame;
-    gameepisode = 1;
-    gamemap = 1;
-    gameskill = sk_medium;
+    G_InitNew(sk_medium, 1, 1);
 }
