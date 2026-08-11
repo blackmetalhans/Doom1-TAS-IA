@@ -156,9 +156,10 @@ const playerX = host.dataView.getInt32(0x13bd28 + 24, true);
 
 ## 🗺️ Roadmap del Proyecto
 
-- **Fase 8: Integración NEAT y Montaje VFS**
-  - Montaje de IWAD en VFS de Emscripten y mapeo de memoria FFI para `ticcmd`.
-  - Evaluación de fitness de redes neuronales basada en telemetría de salud y distancia.
+- **Fase 8: Integración NEAT y Cierre del Bucle FFI**
+  - **[COMPLETADO]** Aislamiento BSS y Validación del Bucle FFI: `ticcmd_t` aislado del ring buffer de red (`netcmds`), permitiendo inyecciones deterministas de zero-overhead. Pantalla de título evitada forzando alocación de nivel vía `G_InitNew()`.
+  - **[PENDIENTE]** Estructuración de Topología NEAT: Mapear genomas nativamente a inyecciones estructurales FFI (`forwardmove`, `angleturn`, etc).
+  - **[PENDIENTE]** Sensores de Entorno (Raycasting/BSP): Extraer punteros del árbol BSP y raycasting para inyectar distancias del entorno como nodos de entrada (sensores) para el agente.
 - **Fase 9: Cliente Visual & Canvas Bridge (Modern Alternative to DSDA-Runner)**
   - Extracción de framebuffer crudo (`screens[0]`) mediante `DataView` y renderizado dinámico en Canvas HTML5 / Electron para creación de TAS sin depender de herramientas legacy en C.
 

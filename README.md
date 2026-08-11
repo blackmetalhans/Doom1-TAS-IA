@@ -156,9 +156,10 @@ const playerX = host.dataView.getInt32(0x13bd28 + 24, true);
 
 ## 🗺️ Project Roadmap
 
-- **Phase 8: NEAT Integration & VFS Mounting**
-  - IWAD mounting in Emscripten VFS and tick-cmd FFI memory mapping.
-  - Neural network fitness evaluations based on health and distance telemetry.
+- **Phase 8: NEAT Integration & FFI Loop Completion**
+  - **[COMPLETED]** BSS Isolation & FFI Loop Validation: Isolated `ticcmd_t` from the network ring buffer (`netcmds`), enabling deterministic zero-overhead injections. Title screen bypassed via `G_InitNew()`.
+  - **[PENDING]** NEAT Topology Structuring: Map genomes directly to FFI struct arrays (`forwardmove`, `angleturn`, etc).
+  - **[PENDING]** Environment Sensing (Raycasting/BSP): Extract pointers from the BSP tree to inject environment distances as sensory inputs for the agent.
 - **Phase 9: Visual Client & Canvas Bridge (Modern Alternative to DSDA-Runner)**
   - Raw framebuffer extraction (`screens[0]`) via `DataView` and dynamic rendering on HTML5 Canvas / Electron for TAS creation without depending on legacy C tools.
 
