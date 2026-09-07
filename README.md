@@ -1,196 +1,55 @@
-# Doom1-TAS-IA 🚀
+<div align="center">
+  <h1>🔥 Doom1-TAS-IA</h1>
+  <p><strong>The next generation of "Bare Metal" Tool-Assisted Speedrunning and Reinforcement Learning for Doom, running directly in WebAssembly memory.</strong></p>
 
-[![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](LICENSE.md)
-[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
-[![Status](https://img.shields.io/badge/Status-WIP-orange.svg)](#)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#)
+  <a href="https://buymeacoffee.com/punkito">
+    <img src="https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee">
+  </a>
+  <br/>
+  <a href="README-es.md"><strong>🇪🇸 Leer en Español</strong></a>
+</div>
 
-![Demo](assets/demo.gif)
+<br/>
 
-[Español](README-es.md) | **English**
+**Doom1-TAS-IA** is not a traditional bot. Unlike ViZDoom or other frameworks that rely on screen scraping (OpenCV) or socket-based IPC, this project **compiles Chocolate Doom into WebAssembly (WASM)** and injects genetic algorithms by physically mutating the RAM synchronously.
 
-High-performance, neuro-evolutionary **Tool-Assisted Speedrun (TAS)** and **Artificial Intelligence** framework for Doom 1, powered by WebAssembly (WASM) and a headless C engine controlled via a Node.js hypervisor.
+> Zero external ML dependencies. Zero video overhead. Zero IPC lag. Just pure V8 JavaScript and raw linear memory.
 
----
+## 🚀 Key Features (The DSDA-Killer)
 
-## 📋 Table of Contents
-- [Overview](#-overview)
-- [Architecture & C-WASM-JS Bridge](#-architecture--c-wasm-js-bridge)
-- [Technology Stack](#-technology-stack)
-- [Project Structure](#-project-structure)
-- [Setup & Build Instructions](#-setup--build-instructions)
-- [Hypervisor & FFI Usage](#-hypervisor--ffi-usage)
-- [Project Roadmap](#-project-roadmap)
-- [Development Methodology](#-development-methodology)
-- [Why This Is Hard](#-why-this-is-hard)
-- [Commit Convention & Guidelines](#-commit-convention--guidelines)
-- [License](#-license)
+* 🧠 **Zero-Deps NEAT Engine:** A NeuroEvolution of Augmenting Topologies engine written 100% in Vanilla ES6, ditching TensorFlow and Python entirely.
+* ⚡ **Absolute Physical Control:** The agent reads the `mobj_t` structure and writes to `ticcmd_t` using precise C memory offsets via `DataView`.
+* 👁️ **Native Lidar (Raycasting):** Hooks directly into Doom's BSP line traversal (`P_PathTraverse`). The AI shoots lasers to detect walls directly from id Software's collision engine.
+* ⏪ **TAS Time Machine (Memory Rewind):** _Save States_ are executed by deep-cloning the entire WebAssembly `HEAPU8` (64MB) in milliseconds, allowing pristine frame-by-frame rewinds.
+* 🎨 **Canvas Bridge (Web Frontend):** A native visual client (`js-client/`) reads the internal screen buffer's color indices and paints them directly onto an HTML5 Canvas, mapping to the `PLAYPAL` palette asynchronously.
 
----
+## 🗺️ Evolution Roadmap
 
-## 📖 Overview
-Doom1-TAS-IA is an experimental platform designed for building autonomous speedrun bots and AI agents for Doom 1. By stripping the Chocolate Doom core into a headless WebAssembly engine, the system enables deterministic, frame-by-frame (TIC) tick-loop execution and direct memory mutation via a high-performance Node.js hypervisor.
+- [x] **Phase 1-7:** Port Chocolate Doom to WASM and stabilize asynchronous memory.
+- [x] **Phase 8:** ILP32 offset calculation, `ticcmd_t` injection, and Hypervisor construction (Gym-like `tas_host.mjs`).
+- [x] **Phase 9:** Eyes for the AI (Lidar), Waypoint Navigation, and visual Framebuffer Extraction.
+- [x] **Phase 10:** Linear Memory Snapshots (`Uint8Array`) for frame-by-frame rewinds and blazing fast Save States.
+- [ ] **Phase 11:** Dynamic C-to-JS offset exportation (To solve pointer fragility issues).
+- [ ] **Phase 12:** Packaged graphical interface (Electron/Tauri) for human TASing and a unified training dashboard.
 
-The primary goal is applying NeuroEvolution of Augmenting Topologies (NEAT) and reinforcement learning models to optimize completion times, route navigation, and movement mechanics in Doom.
+## 🧬 How to run the magic
 
----
+Ensure you have your WASM environment loaded (`emsdk`) and a local `doom1.wad`:
 
-## 🏗️ Architecture & C-WASM-JS Bridge
-
-The architecture consists of three decoupled layers designed for zero-overhead performance:
-
-1. **Headless Engine Layer (C/WASM):** 
-   - Modified Chocolate Doom core compiled to WASM via Emscripten without graphics or sound output.
-   - Entry point: `init_headless_doom()` initializes memory, configuration, IWAD loading (`D_FindIWAD`), version identification (`D_IdentifyVersion`), and logic subsystems (`M_Init`, `R_Init`, `P_Init`).
-   - C Hooks ([src/tas_hooks.c](src/tas_hooks.c)):
-     - `_get_ticcmd_pointer()`: Exposes the exact memory address of `players[consoleplayer].cmd` in BSS segment (`0x13bd28`).
-     - `_run_single_tic()`: Executes `G_Ticker()` for deterministic single-frame stepping.
-
-2. **Bridge Layer (Linear DataView Memory):**
-   - Direct memory read/write inspection over WebAssembly linear heap (`mod.HEAPU8.buffer`) using JavaScript `DataView`.
-   - Bypasses JSON/FFI serialization overhead.
-   - Uses ILP32 32-bit layout for Doom C structures (`mobj_t`, `ticcmd_t`).
-
-3. **Hypervisor Layer (Node.js / ES Modules):**
-   - Implemented in [tas_host.mjs](tas_host.mjs).
-   - Asynchronously initializes WASM runtime via `onRuntimeInitialized`, mounts IWAD into Emscripten VFS (`/doom1.wad`), and drives the tick-by-tick simulation loop.
-
-For full architectural specifications, see [ARCHITECTURE.MD](ARCHITECTURE.MD).
-
----
-
-## 🛠️ Technology Stack
-
-- **Core Engine:** C (Chocolate Doom / Doomgeneric core)
-- **Compiler:** Emscripten (`emcc`) targeting WebAssembly (WASM)
-- **Build System:** CMake + Ninja
-- **Hypervisor / Host:** Node.js (ES Modules, `DataView`, Emscripten VFS)
-- **AI Engine:** NEAT (NeuroEvolution of Augmenting Topologies)
-
----
-
-## 📂 Project Structure
-
-```
-.
-├── ARCHITECTURE.MD          # Technical architectural specification and memory maps
-├── CMakeLists.txt           # Build configuration with Emscripten linker flags
-├── LICENSE.md               # GNU General Public License v2.0
-├── README.md                # Project documentation (English)
-├── README-es.md             # Documentación del proyecto (Español)
-├── setup.sh                 # Environment setup and dependency fetching script
-├── tas_host.mjs             # Node.js hypervisor and WASM host bridge
-├── test_hooks.mjs           # FFI probe and binary patch verification script
-├── .docs_internals/         # Isolated project context and engineering rules
-│   ├── doom_tas_context.md  # Context and current roadmap status
-│   └── system_rules.md      # Workflow rules and repository guidelines
-├── assets/                  # Game assets (doom1.wad IWAD)
-├── build/                   # Compilation artifacts (chocolate-doom.js, wasm)
-├── js-client/               # Web client and visual canvas bridge components
-└── src/                     # C engine source code and custom FFI hooks
-    ├── tas_hooks.c          # FFI export hooks (_get_ticcmd_pointer, _run_single_tic)
-    └── chocolate-doom/      # Chocolate Doom engine codebase
-```
-
----
-
-## ⚙️ Setup & Build Instructions
-
-### Prerequisites
-- Node.js (v18+)
-- Emscripten SDK (`emsdk`) configured in PATH
-- CMake (v3.20+) and Ninja build tool
-
-### 1. Environment Initialization
-Run [setup.sh](setup.sh) to clone dependencies and fetch the Doom 1 shareware IWAD:
 ```bash
-./setup.sh
-```
-
-### 2. Compiling to WebAssembly
-Initialize `emsdk` environment variables and run CMake with Ninja:
-```bash
-# On Linux / MINGW64 / Bash / Windows:
-source /path/to/emsdk/emsdk_env.sh
-emcmake cmake -B build -G Ninja
+# 1. Compile C hooks into WebAssembly
 ninja -C build
+
+# 2. Boot up the Neural Network Training Matrix
+npm run train
+
+# 3. Spin up the Canvas Visual Client (Watch the AI play)
+npm run start-client
 ```
 
-The build process generates `chocolate-doom.js` and `chocolate-doom.wasm` inside the `build/` directory.
+## 🤝 Join the Resistance!
+This repository has the potential to redefine how we create Tool-Assisted Speedruns and teach artificial intelligence to navigate 90s engines.
+**If you are a low-level maniac, C, WASM or Neural Network enthusiast, feel free to FORK the repo and drop a Pull Request.**
 
----
-
-## 🎮 Hypervisor & FFI Usage
-
-To boot the WASM engine and test the FFI memory bridge, run [tas_host.mjs](tas_host.mjs):
-
-```bash
-node tas_host.mjs
-```
-
-### Programmatic Usage in JS:
-```javascript
-import TASHost from './tas_host.mjs';
-
-const host = new TASHost();
-await host.boot();
-
-// Inject input frame (forwardmove, sidemove, angleturn, buttons, etc.)
-host.injectTicCmd({
-    forwardmove: 50,
-    sidemove: 0,
-    angleturn: 0,
-    consistancy: 0,
-    chatchar: 0,
-    buttons: 1 // BT_ATTACK
-});
-
-// Step engine forward by 1 frame
-host.runSingleTic();
-
-// Inspect telemetry directly from WASM memory
-const playerX = host.dataView.getInt32(0x13bd28 + 24, true);
-```
-
----
-
-## 🗺️ Project Roadmap
-
-- **Phase 8: NEAT Integration & FFI Loop Completion**
-  - **[COMPLETED]** BSS Isolation & FFI Loop Validation: Isolated `ticcmd_t` from the network ring buffer (`netcmds`), enabling deterministic zero-overhead injections. Title screen bypassed via `G_InitNew()`.
-  - **[PENDING]** NEAT Topology Structuring: Map genomes directly to FFI struct arrays (`forwardmove`, `angleturn`, etc).
-  - **[PENDING]** Environment Sensing (Raycasting/BSP): Extract pointers from the BSP tree to inject environment distances as sensory inputs for the agent.
-- **Phase 9: Visual Client & Canvas Bridge (Modern Alternative to DSDA-Runner)**
-  - Raw framebuffer extraction (`screens[0]`) via `DataView` and dynamic rendering on HTML5 Canvas / Electron for TAS creation without depending on legacy C tools.
-
----
-
-## 🛠️ Development Methodology
-
-Artificial Intelligence models in this repository are utilized strictly as software tooling and AST parser assistants (e.g. automating boilerplate code generation, syntax transformations, and structured file edits). AI assistants do not replace low-level architectural C engineering, memory-alignment design, or human heuristic judgment required for deterministic game engine hypervisors.
-
-For details on engineering guidelines, see [.docs_internals/system_rules.md](.docs_internals/system_rules.md).
-
----
-
-## ⚡ Why This Is Hard
-
-Executing NeuroEvolution of Augmenting Topologies (NEAT) directly over a 1990s monolithic C engine cross-compiled to WebAssembly is fundamentally superior to and exponentially harder than operating against standard external emulators or video stream wrappers. Traditional RL setups suffer from high IPC latency, non-deterministic OS scheduling, and bloated framebuffer captures. In contrast, this architecture strips the engine down to a headless C execution core, exposes the physical BSS segment addresses (`0x13bd28` for `ticcmd_t` structures), and drives simulation deterministically via zero-overhead `DataView` memory mutations at 35 TIC/s (or uncapped evaluation speeds exceeding thousands of frames per second). Achieving this requires meticulous low-level C refactoring, maintaining exact ILP32 struct memory alignments across WASM boundaries, resolving Emscripten VFS file synchronization caveats, and guaranteeing absolute frame-perfect state determinism across millions of evolutionary iterations.
-
----
-
-## 🤝 Commit Convention & Guidelines
-
-Strict adherence to **Conventional Commits** is required:
-- `feat:` New TAS features, AI modules, or hypervisor hooks.
-- `fix:` Bug fixes, desync resolutions, or build pipeline corrections.
-- `refactor:` Memory layout optimizations or engine headless purges.
-- `chore:` Build script or dependency updates.
-- `docs:` Documentation and memory map updates.
-
----
-
-## 📜 License
-
-This project is licensed under the **GNU General Public License v2.0** — see [LICENSE.md](LICENSE.md) for details.
-
+Like what you see? All this code is free, open, and goes straight into the guts of the software.
+☕ [Buy me a coffee to keep the code alive!](https://buymeacoffee.com/punkito)

@@ -1,68 +1,43 @@
-# ARCHITECTURE.md - Doom1-TAS-IA Architecture & C-WASM-JS Bridge
+# Architecture: Doom1-TAS-IA
 
-## Overview
-This document specifies the zero-overhead C-WASM-JS bridge and execution pipeline for the Doom1-TAS-IA autonomous speedrun bot. The architecture focuses on deterministic execution and high-performance telemetry extraction.
+The core design philosophy is to bypass all IPC (Inter-Process Communication) overhead. We do not use sockets, pipes, or screen-scraping (like OpenCV). We execute the game engine synchronously as a WebAssembly module within the V8 JavaScript thread. 
 
-## System Diagram
-```mermaid
-graph TD
-    subgraph "Hypervisor (Node.js)"
-        H[tas_host.mjs] -->|env.step| L[Simulation Loop]
-        L -->|Input Injection| C_Hook[SetPlayerInputs]
-        L -->|Memory Read| T[Telemetry Analysis]
-    end
+This enables Reinforcement Learning (NEAT) and TAS generation at unprecedented speeds.
 
-    subgraph "Bridge (WASM Linear Memory)"
-        DV[DataView / SharedArrayBuffer]
-    end
+## 1. Memory Offsets (WASM32 / ILP32)
 
-    subgraph "Engine (C/WASM)"
-        C_Hook -->|Mutate ticcmd_t| CD[Chocolate Doom Core]
-        CD -->|Execute Tick| P[Player Mobj State]
-        P -.->|Memory Mapping| DV
-    end
+We interact directly with the C engine's linear memory. The structural byte alignment for 32-bit WASM is as follows:
 
-    T -.->|Fitness Score| NEAT[NeuroEvolution Agent]
-    NEAT -->|Generate Genes| L
-```
+| Component       | Struct / Global            | Pointer Source                      | Offset (Bytes) | Type       | Description |
+|-----------------|----------------------------|-------------------------------------|----------------|------------|-------------|
+| **Input**       | `ticcmd_t`                 | `_get_ticcmd_pointer()`             | +0             | `int8`     | `forwardmove` |
+| **Input**       | `ticcmd_t`                 | `_get_ticcmd_pointer()`             | +1             | `int8`     | `sidemove`    |
+| **Input**       | `ticcmd_t`                 | `_get_ticcmd_pointer()`             | +2             | `int16`    | `angleturn`   |
+| **Input**       | `ticcmd_t`                 | `_get_ticcmd_pointer()`             | +7             | `uint8`    | `buttons`     |
+| **Sensors**     | `mobj_t`                   | `_get_player_mobj_pointer()`        | +12            | `int32`    | `x` (fixed_t) |
+| **Sensors**     | `mobj_t`                   | `_get_player_mobj_pointer()`        | +16            | `int32`    | `y` (fixed_t) |
+| **Sensors**     | `mobj_t`                   | `_get_player_mobj_pointer()`        | +32            | `uint32`   | `angle` (BAM)|
+| **Sensors**     | `mobj_t`                   | `_get_player_mobj_pointer()`        | +108           | `int32`    | `health`   |
+| **Visuals**     | `byte* screens[0]`         | `_get_screen_buffer()`              | +0             | `uint8[64k]`| Framebuffer |
+| **Visuals**     | `PLAYPAL`                  | `_get_playpal_pointer()`            | +0             | `uint8[768]`| RGB Palette |
 
-## Core Layers
+## 2. Lidar (Native Raycasting)
 
-### 1. Engine Layer (C/WASM)
-- **Core:** Headless compilation of Chocolate Doom/PrBoom core using Emscripten (`emcc`).
-- **Hooks:** Intercepts `ticcmd_t` before physical frame processing via `EMSCRIPTEN_KEEPALIVE` hooks.
-- **Key Functions:**
-    - `_SetPlayerInputs(forward, side, angle, buttons)`: Overrides game inputs for the current tick.
-    - `_GetPlayerMobjPointer()`: Returns the address of the player object in WASM memory.
+To prevent the agent from getting stuck in "local minima" (running blindly into walls), we implemented a native raycasting solution:
+1. `_get_ray_distance(angle_offset_deg)` is exposed from C.
+2. It uses Doom's internal Blockmap and `P_PathTraverse`.
+3. An interception callback (`PTR_LidarTraverse`) stops the ray when hitting a solid `line_t`.
+4. Returns the physical distance as a `float`. `sensor_extractor.mjs` triggers 5 rays per frame (-45°, -20°, 0°, +20°, +45°) to feed the neural network.
 
-### 2. Bridge & Telemetry Layer (DataView)
-Direct memory inspection over the WebAssembly Linear Memory buffer using fixed structure pointer offsets. We use **ILP32** data model (32-bit pointers).
+## 3. Waypoint Navigation
 
-| Attribute | Offset (bytes) | Type | Format |
-| :--- | :--- | :--- | :--- |
-| `MOBJ_X` | 24 | `int32_t` | Fixed 16.16 |
-| `MOBJ_Y` | 28 | `int32_t` | Fixed 16.16 |
-| `MOBJ_Z` | 32 | `int32_t` | Fixed 16.16 |
-| `MOBJ_ANGLE` | 48 | `uint32_t` | BAM (Binary Angular Measure) |
-| `MOBJ_HEALTH` | 112 | `int32_t` | Integer |
+Doom maps are complex and non-linear. The `TASHost` class uses an array of spatial Waypoints (`this.waypoints`).
+The Fitness function rewards the AI for reaching the *current* waypoint and transitioning to the next, preventing the agent from hugging a wall that separates it from the final exit switch.
 
-### 3. Hypervisor Layer (Node.js / ES Modules)
-Decoupled tick-by-tick simulation loop (`env.step()`) executed independently from real-time display constraints.
-- **Deterministic:** Every run with the same inputs produces the same results.
-- **Async Interop:** Uses Top-Level Await for WASM instantiation.
+## 4. TAS Memory Snapshots (The "Time Machine")
 
-## Zero-Overhead Principles
-- **No Serialization:** Telemetry reads directly from WASM Shared Array / DataView memory pointers without JSON parsing.
-- **Atomic Ticks:** Discrete frame stepping ensures deterministic simulation for neural network training and TAS reproduction.
-- **Binary Compatibility:** Direct access to C structs from JS via pointer arithmetic.
-
-## Build Pipeline
-The project uses a custom toolchain based on Emscripten and CMake:
-1.  **Environment:** Requires `emsdk` initialized (`source emsdk_env.sh`).
-2.  **Config:** `emcmake cmake -G Ninja ..`
-3.  **Compilation:** `ninja` produces `chocolate-doom.js` and `chocolate-doom.wasm`.
-
-## FUTURE PHASE: VISUAL CLIENT & CANVAS BRIDGE (GUI)
-Since the engine is headless in WASM and exposed via FFI, a modern frontend (Web/Electron) will be developed. This client will read the internal framebuffer pointer (`screens[0]`), apply RGBA palette mapping (PLAYPAL), and render to an HTML5 `<canvas>`. User GUI inputs will directly mutate `ticcmd_t` structures in BSS memory to create TAS manually without relying on legacy C runners.
-
-
+WASM represents all physical RAM (heap, stack, BSS) as an `ArrayBuffer` attached to `HEAPU8`.
+To implement Save States and Frame-Rewind:
+1. `saveState()`: Creates a deep clone using `new Uint8Array(Module.HEAPU8)`.
+2. `loadState(snapshot)`: Overwrites the linear memory using `Module.HEAPU8.set(snapshot)`.
+* This operation costs almost 0ms and provides deterministic rewinds for TAS engineering.

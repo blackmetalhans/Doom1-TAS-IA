@@ -1,0 +1,23 @@
+{
+  "name": "doom1-tas-ia",
+  "version": "1.0.0",
+  "description": "Plataforma neuro-evolutiva (NEAT) de Tool-Assisted Speedrun (TAS) sobre Doom 1 WASM",
+  "type": "module",
+  "main": "tas_host.mjs",
+  "scripts": {
+    "test": "node test_hooks.mjs",
+    "train": "node train_neat.mjs",
+    "start-client": "npx serve . -p 8080"
+  },
+  "keywords": [
+    "doom",
+    "neat",
+    "wasm",
+    "tas",
+    "speedrun",
+    "ai",
+    "reinforcement-learning"
+  ],
+  "author": "Hans Soriano",
+  "license": "GPL-2.0"
+}

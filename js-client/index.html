@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Doom1-TAS-IA Visual Client</title>
+    <style>
+        body {
+            background-color: #111;
+            color: #fff;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        canvas {
+            image-rendering: pixelated;
+            width: 960px; /* 320 x 3 */
+            height: 600px; /* 200 x 3 */
+            border: 2px solid #333;
+            box-shadow: 0 0 20px #000;
+        }
+        #status { margin-bottom: 15px; font-size: 18px; color: #00ff00; }
+        .controls { margin-top: 10px; color: #aaa; text-align: center; }
+    </style>
+</head>
+<body>
+    <div id="status">Iniciando motor WebAssembly...</div>
+    <canvas id="doomCanvas" width="320" height="200"></canvas>
+    <div class="controls">
+        <p>Este es un renderizado raw desde la memoria lineal compartida de WASM (0% lag).</p>
+        <p>Motor: Chocolate-Doom Headless</p>
+    </div>
+    
+    <!-- Usamos module para importar el WASM generado -->
+    <script type="module" src="./app.mjs"></script>
+</body>
+</html>
