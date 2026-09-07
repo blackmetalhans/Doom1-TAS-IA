@@ -10,3 +10,5 @@ node_modules/
 .aider*
 .clineignore
 .clinenrules
+.vscode/
+.docs_internals/
